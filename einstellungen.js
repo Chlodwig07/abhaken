@@ -12,4 +12,4 @@
 //
 // ============================================================
 
-window.ABHAKEN_URL = 'HIER-DIE-EXEC-ADRESSE-EINFUEGEN';
+window.ABHAKEN_URL = 'https://script.google.com/macros/s/AKfycbwRG-HMD6_ZuvyteU4U6hdPjwoKSq_sd-Woa87eR7CuxT51UBGK_JKA2HbF8sFWkdKm9Q/exec';
