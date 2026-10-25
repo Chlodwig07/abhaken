@@ -19,9 +19,6 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,700&family=Figtree:wght@500;700&display=swap" rel="stylesheet">
 
-  <!-- Hier steht die Adresse deiner Abhaken-App -->
-  <script src="einstellungen.js"></script>
-
   <style>
     /* ==========================================================
        ABHAKEN – APP-HÜLLE
@@ -29,17 +26,29 @@
        Diese Seite macht aus deiner Apps-Script-Web-App eine
        installierbare App mit eigenem Icon. Sie zeigt die
        Web-App im Vollbild an und kümmert sich ums Laden.
+
+       Die Adresse der Web-App steht NICHT in dieser Datei.
+       Sie wird beim ersten Start abgefragt und nur auf dem
+       jeweiligen Gerät gespeichert.
        ========================================================== */
 
     :root {
       --schale: #141A10;
+      --schale-hell: #1C2417;
       --schale-rand: #2C3724;
       --fruchtfleisch: #EEF1D2;
       --gedaempft: #8E9A7C;
       --avocado: #C0CA33;
+      --fehler: #E8866B;
 
       --schrift-gross: 'Bricolage Grotesque', system-ui, sans-serif;
       --schrift: 'Figtree', system-ui, -apple-system, sans-serif;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
     }
 
     html,
@@ -72,6 +81,7 @@
       display: grid;
       place-items: center;
       padding: 24px;
+      overflow-y: auto;
       background:
         radial-gradient(120% 60% at 0% 0%, rgba(192, 202, 51, 0.07), transparent 60%),
         var(--schale);
@@ -138,6 +148,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
+      width: 100%;
       min-height: 52px;
       padding: 0 16px;
       border-radius: 14px;
@@ -160,7 +171,47 @@
       color: var(--fruchtfleisch);
     }
 
-    .knopf:focus-visible {
+    .knopf-leise {
+      min-height: 44px;
+      border: 0;
+      background: transparent;
+      color: var(--gedaempft);
+      font-weight: 500;
+    }
+
+    /* Eingabefeld für die Adresse */
+    .feld {
+      width: 100%;
+      min-height: 52px;
+      padding: 12px 14px;
+      border: 1px solid var(--schale-rand);
+      border-radius: 14px;
+      background: var(--schale-hell);
+      color: var(--fruchtfleisch);
+      font-family: var(--schrift);
+      font-size: 15px;
+      font-weight: 500;
+    }
+
+    .feld::placeholder {
+      color: var(--gedaempft);
+      opacity: 0.8;
+    }
+
+    .hinweis .feld-fehler {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.4;
+      color: var(--fehler);
+      text-align: left;
+    }
+
+    .hinweis .feld-fehler:empty {
+      display: none;
+    }
+
+    .knopf:focus-visible,
+    .feld:focus-visible {
       outline: 2px solid var(--avocado);
       outline-offset: 3px;
     }
@@ -192,6 +243,21 @@
         <circle cx="52" cy="78" r="6" fill="#A97A55" opacity="0.7"/>
       </svg>
 
+      <!-- Erster Start: Adresse eingeben -->
+      <form id="hinweisEinrichten" class="hinweis" hidden novalidate>
+        <h1>Abhaken einrichten</h1>
+        <p>Füge die Adresse deiner Abhaken-App ein. Sie beginnt mit https://script.google.com und endet auf /exec. Sie wird nur auf diesem Gerät gespeichert.</p>
+        <div class="knoepfe">
+          <input id="adresseFeld" class="feld" type="url" inputmode="url"
+                 autocomplete="off" autocapitalize="off" spellcheck="false"
+                 placeholder="https://script.google.com/…/exec"
+                 aria-label="Adresse der Abhaken-App"
+                 aria-describedby="adresseFehler">
+          <p id="adresseFehler" class="feld-fehler" role="alert"></p>
+          <button class="knopf knopf-erst" type="submit">Speichern</button>
+        </div>
+      </form>
+
       <!-- Erscheint, wenn die App nach einiger Zeit nicht geladen ist -->
       <div id="hinweisLaden" class="hinweis" hidden>
         <h1>Die App lädt nicht</h1>
@@ -199,13 +265,8 @@
         <div class="knoepfe">
           <a id="imBrowser" class="knopf knopf-erst" target="_blank" rel="noopener">Im Browser öffnen</a>
           <button id="neuLaden" class="knopf knopf-zweit" type="button">Neu laden</button>
+          <button id="adresseAendern" class="knopf knopf-leise" type="button">Adresse ändern</button>
         </div>
-      </div>
-
-      <!-- Erscheint, wenn in einstellungen.js noch keine Adresse steht -->
-      <div id="hinweisAdresse" class="hinweis" hidden>
-        <h1>Adresse fehlt</h1>
-        <p>Trage in der Datei <b>einstellungen.js</b> die Adresse deiner Abhaken-App ein. Sie beginnt mit https://script.google.com und endet auf /exec.</p>
       </div>
 
     </div>
@@ -217,24 +278,91 @@
       // So lange warten, bevor der Hinweis „Die App lädt nicht“ erscheint
       const WARTEN_BIS_HINWEIS_MS = 15000;
 
-      const adresse = String(window.ABHAKEN_URL || '').trim();
-      const lade = document.getElementById('lade');
+      // Unter diesem Namen liegt die Adresse im Speicher des Geräts
+      const SPEICHER_NAME = 'abhaken-adresse';
+
+      const lade = el('lade');
       let bereit = false;
+      let hinweisTimer = null;
 
 
-      function zeigeHinweis(id) {
-        lade.classList.add('hat-hinweis');
-        document.getElementById(id).hidden = false;
+      function el(id) {
+        return document.getElementById(id);
+      }
+
+
+      function istGueltig(adresse) {
+        return /^https:\/\/script\.google\.com\/.+\/exec$/.test(adresse);
       }
 
 
       // --------------------------------------------------------
-      // ADRESSE PRÜFEN
+      // ADRESSE AUF DEM GERÄT LESEN UND SPEICHERN
       // --------------------------------------------------------
 
-      if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(adresse)) {
-        zeigeHinweis('hinweisAdresse');
-        return;
+      function leseAdresse() {
+        try {
+          return localStorage.getItem(SPEICHER_NAME) || '';
+        } catch (fehler) {
+          return '';
+        }
+      }
+
+
+      function speichereAdresse(adresse) {
+        try {
+          localStorage.setItem(SPEICHER_NAME, adresse);
+        } catch (fehler) {
+          // Speichern nicht möglich: die App läuft trotzdem,
+          // fragt beim nächsten Start aber erneut
+        }
+      }
+
+
+      // --------------------------------------------------------
+      // ANZEIGE
+      // --------------------------------------------------------
+
+      // Zeigt einen der Hinweise an (oder keinen, bei null)
+      function zeigeHinweis(id) {
+
+        ['hinweisEinrichten', 'hinweisLaden'].forEach(function (h) {
+          el(h).hidden = h !== id;
+        });
+
+        lade.classList.toggle('hat-hinweis', id !== null);
+      }
+
+
+      function zeigeEinrichten() {
+
+        clearTimeout(hinweisTimer);
+        el('app').src = 'about:blank';
+        lade.classList.remove('weg');
+
+        el('adresseFeld').value = leseAdresse();
+        el('adresseFehler').textContent = '';
+
+        zeigeHinweis('hinweisEinrichten');
+      }
+
+
+      function starteApp(adresse) {
+
+        bereit = false;
+        lade.classList.remove('weg');
+        zeigeHinweis(null);
+
+        el('imBrowser').href = adresse;
+        el('app').src = adresse;
+
+        clearTimeout(hinweisTimer);
+
+        hinweisTimer = setTimeout(function () {
+          if (!bereit) {
+            zeigeHinweis('hinweisLaden');
+          }
+        }, WARTEN_BIS_HINWEIS_MS);
       }
 
 
@@ -247,6 +375,11 @@
       //
 
       window.addEventListener('message', function (e) {
+
+        // Während der Einrichtung nichts ausblenden
+        if (!el('hinweisEinrichten').hidden) {
+          return;
+        }
 
         let host = '';
 
@@ -261,28 +394,51 @@
           host.endsWith('.googleusercontent.com')
         ) {
           bereit = true;
+          clearTimeout(hinweisTimer);
           lade.classList.add('weg');
         }
       });
 
 
       // --------------------------------------------------------
-      // APP LADEN
+      // KNÖPFE UND EINGABE
       // --------------------------------------------------------
 
-      document.getElementById('imBrowser').href = adresse;
+      el('hinweisEinrichten').addEventListener('submit', function (e) {
 
-      document.getElementById('neuLaden').addEventListener('click', function () {
+        e.preventDefault();
+
+        const adresse = el('adresseFeld').value.trim();
+
+        if (!istGueltig(adresse)) {
+          el('adresseFehler').textContent =
+            'Das ist keine passende Adresse. Sie beginnt mit https://script.google.com und endet auf /exec.';
+          el('adresseFeld').focus();
+          return;
+        }
+
+        speichereAdresse(adresse);
+        starteApp(adresse);
+      });
+
+      el('neuLaden').addEventListener('click', function () {
         window.location.reload();
       });
 
-      document.getElementById('app').src = adresse;
+      el('adresseAendern').addEventListener('click', zeigeEinrichten);
 
-      setTimeout(function () {
-        if (!bereit) {
-          zeigeHinweis('hinweisLaden');
-        }
-      }, WARTEN_BIS_HINWEIS_MS);
+
+      // --------------------------------------------------------
+      // START
+      // --------------------------------------------------------
+
+      const gespeichert = leseAdresse();
+
+      if (istGueltig(gespeichert)) {
+        starteApp(gespeichert);
+      } else {
+        zeigeEinrichten();
+      }
 
     })();
   </script>
