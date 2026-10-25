@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#141A10">
+  <meta name="color-scheme" content="dark">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Abhaken">
+  <title>Abhaken</title>
+
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,700&family=Figtree:wght@500;700&display=swap" rel="stylesheet">
+
+  <!-- Hier steht die Adresse deiner Abhaken-App -->
+  <script src="einstellungen.js"></script>
+
+  <style>
+    /* ==========================================================
+       ABHAKEN – APP-HÜLLE
+       ==========================================================
+       Diese Seite macht aus deiner Apps-Script-Web-App eine
+       installierbare App mit eigenem Icon. Sie zeigt die
+       Web-App im Vollbild an und kümmert sich ums Laden.
+       ========================================================== */
+
+    :root {
+      --schale: #141A10;
+      --schale-rand: #2C3724;
+      --fruchtfleisch: #EEF1D2;
+      --gedaempft: #8E9A7C;
+      --avocado: #C0CA33;
+
+      --schrift-gross: 'Bricolage Grotesque', system-ui, sans-serif;
+      --schrift: 'Figtree', system-ui, -apple-system, sans-serif;
+    }
+
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      background: var(--schale);
+      color: var(--fruchtfleisch);
+      font-family: var(--schrift);
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Die eigentliche App */
+    #app {
+      position: fixed;
+      inset: 0;
+      display: block;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: var(--schale);
+    }
+
+    /* Ladebildschirm über der App */
+    .lade {
+      position: fixed;
+      inset: 0;
+      z-index: 2;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background:
+        radial-gradient(120% 60% at 0% 0%, rgba(192, 202, 51, 0.07), transparent 60%),
+        var(--schale);
+      transition: opacity 0.35s ease, visibility 0.35s;
+    }
+
+    .lade.weg {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .lade-inhalt {
+      width: 100%;
+      max-width: 360px;
+      text-align: center;
+    }
+
+    .avocado {
+      width: 72px;
+      height: auto;
+      animation: atmen 1.8s ease-in-out infinite;
+    }
+
+    .lade.hat-hinweis .avocado {
+      animation: none;
+    }
+
+    @keyframes atmen {
+      0%, 100% { transform: scale(0.94); opacity: 0.7; }
+      50%      { transform: scale(1);    opacity: 1; }
+    }
+
+    .hinweis h1 {
+      margin: 22px 0 8px;
+      font-family: var(--schrift-gross);
+      font-size: 26px;
+      font-weight: 700;
+      font-stretch: 85%;
+      font-variation-settings: 'wdth' 85;
+      letter-spacing: -0.01em;
+      line-height: 1.15;
+    }
+
+    .hinweis p {
+      margin: 0 0 22px;
+      font-size: 15px;
+      line-height: 1.5;
+      color: var(--gedaempft);
+    }
+
+    .hinweis b {
+      color: var(--fruchtfleisch);
+      font-weight: 700;
+    }
+
+    .knoepfe {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .knopf {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 52px;
+      padding: 0 16px;
+      border-radius: 14px;
+      font-family: var(--schrift);
+      font-size: 16px;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .knopf-erst {
+      border: 0;
+      background: var(--avocado);
+      color: #1A200F;
+    }
+
+    .knopf-zweit {
+      border: 1px solid var(--schale-rand);
+      background: transparent;
+      color: var(--fruchtfleisch);
+    }
+
+    .knopf:focus-visible {
+      outline: 2px solid var(--avocado);
+      outline-offset: 3px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .avocado { animation: none; }
+      .lade { transition: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <iframe id="app" title="Abhaken"></iframe>
+
+  <div id="lade" class="lade">
+    <div class="lade-inhalt">
+
+      <svg class="avocado" viewBox="0 0 120 140" aria-hidden="true">
+        <defs>
+          <radialGradient id="fleisch" cx="50%" cy="60%" r="62%">
+            <stop offset="0%" stop-color="#F6F7DC"/>
+            <stop offset="55%" stop-color="#DCE59A"/>
+            <stop offset="100%" stop-color="#B3BE2C"/>
+          </radialGradient>
+        </defs>
+        <path d="M60 6C84 6 100 34 108 62c10 36-12 72-48 72S2 98 12 62C20 34 36 6 60 6z" fill="#2B3820"/>
+        <path d="M60 14c20 0 33 24 40 49 8 31-10 63-40 63S12 94 20 63c7-25 20-49 40-49z" fill="url(#fleisch)"/>
+        <circle cx="60" cy="86" r="22" fill="#8B5E3C"/>
+        <circle cx="52" cy="78" r="6" fill="#A97A55" opacity="0.7"/>
+      </svg>
+
+      <!-- Erscheint, wenn die App nach einiger Zeit nicht geladen ist -->
+      <div id="hinweisLaden" class="hinweis" hidden>
+        <h1>Die App lädt nicht</h1>
+        <p>Meist bist du in Chrome gerade nicht bei Google angemeldet. Öffne die App einmal im Browser, melde dich dort an und tippe danach auf <b>Neu laden</b>.</p>
+        <div class="knoepfe">
+          <a id="imBrowser" class="knopf knopf-erst" target="_blank" rel="noopener">Im Browser öffnen</a>
+          <button id="neuLaden" class="knopf knopf-zweit" type="button">Neu laden</button>
+        </div>
+      </div>
+
+      <!-- Erscheint, wenn in einstellungen.js noch keine Adresse steht -->
+      <div id="hinweisAdresse" class="hinweis" hidden>
+        <h1>Adresse fehlt</h1>
+        <p>Trage in der Datei <b>einstellungen.js</b> die Adresse deiner Abhaken-App ein. Sie beginnt mit https://script.google.com und endet auf /exec.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    (function () {
+
+      // So lange warten, bevor der Hinweis „Die App lädt nicht“ erscheint
+      const WARTEN_BIS_HINWEIS_MS = 15000;
+
+      const adresse = String(window.ABHAKEN_URL || '').trim();
+      const lade = document.getElementById('lade');
+      let bereit = false;
+
+
+      function zeigeHinweis(id) {
+        lade.classList.add('hat-hinweis');
+        document.getElementById(id).hidden = false;
+      }
+
+
+      // --------------------------------------------------------
+      // ADRESSE PRÜFEN
+      // --------------------------------------------------------
+
+      if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(adresse)) {
+        zeigeHinweis('hinweisAdresse');
+        return;
+      }
+
+
+      // --------------------------------------------------------
+      // BEREIT-SIGNAL DER APP EMPFANGEN
+      // --------------------------------------------------------
+      //
+      // Die Abhaken-App meldet sich, sobald sie läuft.
+      // Dann verschwindet der Ladebildschirm.
+      //
+
+      window.addEventListener('message', function (e) {
+
+        let host = '';
+
+        try {
+          host = new URL(e.origin).hostname;
+        } catch (fehler) {
+          return;
+        }
+
+        if (
+          e.data === 'abhaken-bereit' &&
+          host.endsWith('.googleusercontent.com')
+        ) {
+          bereit = true;
+          lade.classList.add('weg');
+        }
+      });
+
+
+      // --------------------------------------------------------
+      // APP LADEN
+      // --------------------------------------------------------
+
+      document.getElementById('imBrowser').href = adresse;
+
+      document.getElementById('neuLaden').addEventListener('click', function () {
+        window.location.reload();
+      });
+
+      document.getElementById('app').src = adresse;
+
+      setTimeout(function () {
+        if (!bereit) {
+          zeigeHinweis('hinweisLaden');
+        }
+      }, WARTEN_BIS_HINWEIS_MS);
+
+    })();
+  </script>
+
+</body>
+</html>
